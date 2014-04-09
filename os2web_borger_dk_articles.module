@@ -7,6 +7,12 @@
 include_once('os2web_borger_dk_articles.features.inc');
 
 /**
+ * Text formats
+ */
+define('BORGERDK_TEXT_FORMAT_PLAIN', variable_get('os2web_borger_dk_articles_text_format_plain', 'plain_text'));
+define('BORGERDK_TEXT_FORMAT_HTML', variable_get('os2web_borger_dk_articles_text_format_html', 'full_html'));
+
+/**
  * Implements hook_menu().
  */
 function os2web_borger_dk_articles_menu() {
@@ -270,7 +276,7 @@ function os2web_borger_dk_articles_after_build($form, &$form_state) {
         os2web_borger_dk_articles_fix_disabled($form[$type]);
       }
       if ($type == 'field_os2web_byline' && !empty($form[$type])) {
-        $form[$type]['#format'] = 'plaintext';
+        $form[$type]['#format'] = BORGERDK_TEXT_FORMAT_PLAIN;
       }
     }
 
@@ -634,13 +640,13 @@ function os2web_borger_dk_articles_node_submit(&$node, $form, &$form_state) {
       $node->field_os2web_shortlist['und'][0]['safe_value']     = (!empty($article['huskeliste'])) ? $article['huskeliste'] : '';
       $node->field_os2web_recommended['und'][0]['safe_value']   = (!empty($article['anbefaler'])) ? $article['anbefaler'] : '';
 
-      $node->body['und'][0]['format']                     = 'full_html';
-      $node->field_os2web_header['und'][0]['format']      = 'full_html';
-      $node->field_os2web_selfservice['und'][0]['format'] = 'full_html';
-      $node->field_os2web_byline['und'][0]['format']      = 'plaintext';
-      $node->field_os2web_legislation['und'][0]['format'] = 'full_html';
-      $node->field_os2web_shortlist['und'][0]['format']   = 'full_html';
-      $node->field_os2web_recommended['und'][0]['format'] = 'full_html';
+      $node->body['und'][0]['format']                     = BORGERDK_TEXT_FORMAT_HTML;
+      $node->field_os2web_header['und'][0]['format']      = BORGERDK_TEXT_FORMAT_HTML;
+      $node->field_os2web_selfservice['und'][0]['format'] = BORGERDK_TEXT_FORMAT_HTML;
+      $node->field_os2web_byline['und'][0]['format']      = BORGERDK_TEXT_FORMAT_PLAIN;
+      $node->field_os2web_legislation['und'][0]['format'] = BORGERDK_TEXT_FORMAT_HTML;
+      $node->field_os2web_shortlist['und'][0]['format']   = BORGERDK_TEXT_FORMAT_HTML;
+      $node->field_os2web_recommended['und'][0]['format'] = BORGERDK_TEXT_FORMAT_HTML;
 
       $field_settings = $form_state['values']['field_settings'];
       // TODO: Perform a logical-test (on paper) to see if the external_status is correct.
@@ -1052,31 +1058,31 @@ function _os2web_borger_dk_articles_update_node_content($nid, $article) {
 
   $node->body['und'][0]['value']                          = $body;
   $node->body['und'][0]['safe_value']                     = $body;
-  $node->body['und'][0]['format']                         = 'full_html';
+  $node->body['und'][0]['format']                         = BORGERDK_TEXT_FORMAT_HTML;
 
   $node->field_os2web_byline['und'][0]['value']           = (!empty($article['byline'])) ? $article['byline'] : '';
   $node->field_os2web_byline['und'][0]['safe_value']      = (!empty($article['byline'])) ? $article['byline'] : '';
-  $node->field_os2web_byline['und'][0]['format']          = 'plaintext';
+  $node->field_os2web_byline['und'][0]['format']          = BORGERDK_TEXT_FORMAT_PLAIN;
 
   $node->field_os2web_header['und'][0]['value']           = (!empty($article['header'])) ? $article['header'] : '';
   $node->field_os2web_header['und'][0]['safe_value']      = (!empty($article['header'])) ? $article['header'] : '';
-  $node->field_os2web_header['und'][0]['format']          = 'full_html';
+  $node->field_os2web_header['und'][0]['format']          = BORGERDK_TEXT_FORMAT_HTML;
 
   $node->field_os2web_selfservice['und'][0]['value']      = (!empty($article['selvbetjeningslinks'])) ? $article['selvbetjeningslinks'] : '';
   $node->field_os2web_selfservice['und'][0]['safe_value'] = (!empty($article['selvbetjeningslinks'])) ? $article['selvbetjeningslinks'] : '';
-  $node->field_os2web_selfservice['und'][0]['format']     = 'full_html';
+  $node->field_os2web_selfservice['und'][0]['format']     = BORGERDK_TEXT_FORMAT_HTML;
 
   $node->field_os2web_recommended['und'][0]['value']      = (!empty($article['anbefaler'])) ? $article['anbefaler'] : '';
   $node->field_os2web_recommended['und'][0]['safe_value'] = (!empty($article['anbefaler'])) ? $article['anbefaler'] : '';
-  $node->field_os2web_recommended['und'][0]['format']     = 'full_html';
+  $node->field_os2web_recommended['und'][0]['format']     = BORGERDK_TEXT_FORMAT_HTML;
 
   $node->field_os2web_legislation['und'][0]['value']      = (!empty($article['lovgivning'])) ? $article['lovgivning'] : '';
   $node->field_os2web_legislation['und'][0]['safe_value'] = (!empty($article['lovgivning'])) ? $article['lovgivning'] : '';
-  $node->field_os2web_legislation['und'][0]['format']     = 'full_html';
+  $node->field_os2web_legislation['und'][0]['format']     = BORGERDK_TEXT_FORMAT_HTML;
 
   $node->field_os2web_shortlist['und'][0]['value']        = (!empty($article['huskeliste'])) ? $article['huskeliste'] : '';
   $node->field_os2web_shortlist['und'][0]['safe_value']   = (!empty($article['huskeliste'])) ? $article['huskeliste'] : '';
-  $node->field_os2web_shortlist['und'][0]['format']       = 'full_html';
+  $node->field_os2web_shortlist['und'][0]['format']       = BORGERDK_TEXT_FORMAT_HTML;
 
   // Some fields from borger_dk_article can not be syncronized nor changed here.
   $node->borger_dk_article['external_id']    = $article['external_id'];
