@@ -25,7 +25,7 @@ function os2web_borger_dk_articles_menu() {
     'page callback' => 'system_admin_menu_block_page',
     'file' => 'system.admin.inc',
     'file path' => drupal_get_path('module', 'system'),
-    'access arguments' => array('administer os2web borgerdk articles settings'),
+    'access arguments' => array('administer os2web borgerdk article settings'),
   );
 
   $items['admin/config/borgerdk/settings'] = array(
@@ -33,7 +33,7 @@ function os2web_borger_dk_articles_menu() {
     'description' => 'General settings for the OS2Web borger.dk articles',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('os2web_borger_dk_articles_settings_form'),
-    'access arguments' => array('administer os2web borgerdk articles settings'),
+    'access arguments' => array('administer os2web borgerdk article settings'),
     'file' => 'os2web_borger_dk_articles.admin.inc',
   );
 
