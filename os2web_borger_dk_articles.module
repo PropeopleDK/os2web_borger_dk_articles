@@ -1114,7 +1114,7 @@ function _borger_dk_articles_delete_queue_callback($data) {
 /**
  * Function _os2web_borger_dk_articles_update_node_content().
  */
-function  ($node, $article) {
+function _os2web_borger_dk_articles_update_node_content($node, $article) {
   if (!empty($article['Exceptions']) || !empty($article['error'])) {
     return;
   }
