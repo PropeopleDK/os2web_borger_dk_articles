@@ -542,32 +542,31 @@ function os2web_borger_dk_articles_node_validate($node, $form, &$form_state) {
  * Function os2web_borger_dk_articles_sync_submit().
  */
 function os2web_borger_dk_articles_sync_submit($form, &$form_state) {
-  // Get the node->nid from the form['#node']
-  $nid = $form['#node']->nid;
+  $node = $form['#node'];
 
-  // Update the article
-  os2web_borger_dk_articles_update_article($nid);
+  // Update the article.
+  os2web_borger_dk_articles_update_article($node);
 
   drupal_set_message(t('The article has been updated with content from Borger.dk'), 'status');
-  drupal_goto('node/' . $nid . '/edit');
+  drupal_goto('node/' . $node->nid . '/edit');
 }
 
 /**
  * Update a single article with latest content from borger.dk
  *
- * @param int $nid
+ * @param object $node
  *   The node we are updating.
  */
-function os2web_borger_dk_articles_update_article($nid) {
+function os2web_borger_dk_articles_update_article($node) {
   // First we find the external_id, and last_update time for this article
-  $data = db_query('SELECT external_id, last_updated FROM {os2web_borger_dk_articles} WHERE nid = :nid', array(':nid' => $nid))->fetchObject();
+  $data = db_query('SELECT external_id, last_updated FROM {os2web_borger_dk_articles} WHERE nid = :nid', array(':nid' => $node->nid))->fetchObject();
 
   // Then we fetch the article item from the Borger.dk webservice
   $wsdl = variable_get('os2web_borger_dk_webservice', 'https://www.borger.dk/_vti_bin/borger/ArticleExport.svc?wsdl');
   $article = _os2web_borger_dk_articles_GetArticleByID($data->external_id, $wsdl);
 
   // Now we update the node content with the fetched article content
-  _os2web_borger_dk_articles_update_node_content($nid, $article);
+  _os2web_borger_dk_articles_update_node_content($node, $article);
 }
 
 /**
@@ -861,7 +860,8 @@ function _os2web_borger_dk_articles_cronbatch() {
       if (empty($article['no_updates'])) {
         // We only update articles that does not contain an error
         if (empty($article['Exceptions']) && empty($article['error'])) {
-          _os2web_borger_dk_articles_update_node_content($nid, $article);
+          $node = node_load($nid);
+          _os2web_borger_dk_articles_update_node_content($node, $article);
         }
         if (!empty($article['Exceptions'])) {
           $any_webservice_errors = TRUE;
@@ -1004,7 +1004,7 @@ function _os2web_borger_dk_articles_titles_cronbatch($first_run = FALSE) {
     // We keep the titles-list updated, and because this is used primarily
     // to autocomplete titles on import we MUST keep it up to date, and can
     // not have "non-availlable" article titles "ready for import"!
-    $aid_list = implode(',', array_keys($known_ids));
+    $aid_list = array_keys($known_ids);
     $sql = "UPDATE {os2web_borger_dk_titles} SET `ArticleStatus` = -1 WHERE `ArticleID` IN (:aids)";
     db_query($sql, array(':aids' => $aid_list));
 
@@ -1016,6 +1016,7 @@ function _os2web_borger_dk_articles_titles_cronbatch($first_run = FALSE) {
     $result = db_query($sql, array(':aids' => $aid_list));
 
     // Step through the known_ids that has not been found
+    $log = '';
     foreach ($result as $item) {
       $qitem = array('nid' => $item->nid, 'external_id' => $item->external_id);
       $queue->createItem($qitem);
@@ -1114,12 +1115,10 @@ function _borger_dk_articles_delete_queue_callback($data) {
 /**
  * Function _os2web_borger_dk_articles_update_node_content().
  */
-function _os2web_borger_dk_articles_update_node_content($nid, $article) {
+function _os2web_borger_dk_articles_update_node_content($node, $article) {
   if (!empty($article['Exceptions']) || !empty($article['error'])) {
     return;
   }
-  // First we load the corresponding node.
-  $node = node_load($nid, NULL, TRUE);
 
   // And we update all the node-fields with the article-values.
   $node->title = $article['title'];
@@ -1171,7 +1170,7 @@ function _os2web_borger_dk_articles_update_node_content($nid, $article) {
   node_save($node);
   db_update('os2web_borger_dk_articles')
     ->fields(array('last_updated' => strtotime($article['last_updated'])))
-    ->condition('nid', $nid, '=')
+    ->condition('nid', $node->nid, '=')
     ->execute();
 }
 
@@ -1239,17 +1238,20 @@ function _os2web_borger_dk_articles_GetArticlesByIDs($borgerdk_ids = NULL, $upda
     return array();
   }
 
-  $errors = array();
+  $errors            = array();
+  $municipality_code = variable_get('os2web_borger_dk_webservice_municipality_code', 0);
+  $params            = $municipality_code ? array('municipalityCode' => $municipality_code) : array();
+
   // Then we can start using a new soap-client to find the article-ID from the Borger.dk-URL.
   $client = new SoapClient($wsdl, array('exceptions' => 0));
   if (empty($updated_after) && !empty($borgerdk_ids)) {
     // We have a specified list of articles to fetch.
     // First we make sure to keep requests/minute within given limits.
     _os2web_borger_dk_articles_check_webservice_constraints();
+
     // Building the parameter array included in the webservice request.
-    $municipality_code = variable_get('os2web_borger_dk_webservice_municipality_code', 0);
-    $params = $municipality_code ? array('municipalityCode' => $municipality_code) : array();
     $params += array('articleIDs' => $borgerdk_ids);
+
     // Then we execute our webservice-request.
     $result_list = $client->GetArticlesByIDs($params);
     if (is_soap_fault($result_list)) {
@@ -1261,10 +1263,10 @@ function _os2web_borger_dk_articles_GetArticlesByIDs($borgerdk_ids = NULL, $upda
   elseif (!empty($updated_after) && empty($borgerdk_ids)) {
     // First we make sure to keep requests/minute within given limits.
     _os2web_borger_dk_articles_check_webservice_constraints();
+
     // Building the parameter array included in the webservice request.
-    $municipality_code = variable_get('os2web_borger_dk_webservice_municipality_code', 0);
-    $params = $municipality_code ? array('municipalityCode' => $municipality_code) : array();
     $params += array('updatedAfter' => $updated_after);
+
     // Then we execute our webservice-request.
     // We have a specified date, and want all articles that have been
     // updated since the given date.
@@ -1282,7 +1284,10 @@ function _os2web_borger_dk_articles_GetArticlesByIDs($borgerdk_ids = NULL, $upda
     // We have a specified date, and a specified list of article-IDs. We
     // want all articles from that list that has also been updated since
     // the given date.
-    $result_list = $client->GetArticlesByIDs(array('articleIDs' => $borgerdk_ids, 'updatedAfter' => $updated_after));
+
+    $params += array('articleIDs' => $borgerdk_ids, 'updatedAfter' => $updated_after);
+
+    $result_list = $client->GetArticlesByIDs($params);
     if (is_soap_fault($result_list)) {
       $errors = _os2web_borger_dk_articles_translate_soap_fault(array('articleIDs' => $borgerdk_ids, 'updatedAfter' => $updated_after), $result_list->faultcode, $result_list->faultstring);
 
@@ -1759,7 +1764,7 @@ function _os2web_borger_dk_articles_GetMunicipalityList($wsdl = 'https://www.bor
  */
 function os2web_borger_dk_articles_update_action($node, $context = array()) {
   if ($node->type == 'borger_dk_article') {
-    os2web_borger_dk_articles_update_article($node->nid);
+    os2web_borger_dk_articles_update_article($node);
     watchdog('action', 'Update %title with content from borger.dk.', array('%title' => $node->title));
   }
 }
